@@ -1,0 +1,16 @@
+[
+{
+  "modid": "homingexporbs",
+  "name": "HomingXpOrbs",
+  "description": "Makes experience orb's fly towards you.",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "updateUrl": "",
+  "authorList": ["BlackoutRoulette"],
+  "credits": "Me",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]
