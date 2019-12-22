@@ -25,7 +25,7 @@ public class RenderHomingExpOrb extends RenderXPOrb {
 	public void doRender(EntityXPOrb e, double x, double y, double z, float entityYaw, float partialTicks) {
 		super.doRender(e, x, y, z, entityYaw, partialTicks);
 
-		// don't blame me on this one, this is apparently minecraft's way
+		// this is apparently minecraft's way
 		// to determine if a particle should be spawned or not
 		// reference: RenderGlobal.spawnParticle0()
 		int ps = Minecraft.getMinecraft().gameSettings.particleSetting * 4 + 1;
