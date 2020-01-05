@@ -203,3 +203,4 @@ gradle-app.setting
 ForgeFlower/
 /log.txt
 run/
+*.bat

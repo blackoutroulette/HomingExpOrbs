@@ -1,6 +1,6 @@
-package main.java.blackoutroulette.homingexporbs;
+package blackoutroulette.homingexporbs;
 
-import main.java.blackoutroulette.homingexporbs.entitys.EntityHomingExpOrb;
+import blackoutroulette.homingexporbs.entitys.EntityHomingExpOrb;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.EntityXPOrb;
 import net.minecraft.world.World;
@@ -14,8 +14,8 @@ public class EventHandler {
 
 	@SubscribeEvent(priority = EventPriority.LOWEST)
 	public static void onEntityXpOrbSpawn(EntityJoinWorldEvent event) {
-		Entity e = event.getEntity();
-		World w = event.getWorld();
+		final Entity e = event.getEntity();
+		final World w = event.getWorld();
 		if (w.isRemote || e == null || e.world.isRemote || e.getClass() != EntityXPOrb.class) {
 			return;
 		}

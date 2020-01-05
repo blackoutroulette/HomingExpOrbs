@@ -1,48 +1,45 @@
-package main.java.blackoutroulette.homingexporbs.render;
+package blackoutroulette.homingexporbs.render;
 
-import java.awt.Color;
-
-import main.java.blackoutroulette.homingexporbs.Constants;
-import main.java.blackoutroulette.homingexporbs.entitys.EntityHomingExpOrb;
+import java.util.Iterator;
+import javax.vecmath.Vector4d;
+import blackoutroulette.homingexporbs.Constants;
+import blackoutroulette.homingexporbs.entitys.EntityHomingExpOrb;
+import blackoutroulette.homingexporbs.particles.ParticleRainbow;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.particle.Particle;
-import net.minecraft.client.particle.ParticleSpell;
 import net.minecraft.client.renderer.culling.ICamera;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.client.renderer.entity.RenderXPOrb;
 import net.minecraft.entity.item.EntityXPOrb;
 import net.minecraft.util.math.AxisAlignedBB;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
+@SideOnly(Side.CLIENT)
 public class RenderHomingExpOrb extends RenderXPOrb {
 
-	protected static final ParticleSpell.WitchFactory f = new ParticleSpell.WitchFactory();
+	public static final ParticleRainbow.Factory FACTORY = new ParticleRainbow.Factory();
 
 	protected RenderHomingExpOrb(RenderManager renderManager) {
 		super(renderManager);
 	}
 
 	@Override
-	public void doRender(EntityXPOrb e, double x, double y, double z, float entityYaw, float partialTicks) {
-		super.doRender(e, x, y, z, entityYaw, partialTicks);
+	public void doRender(EntityXPOrb en, double x, double y, double z, float entityYaw, float partialTicks) {
+		super.doRender(en, x, y - 0.2F, z, entityYaw, partialTicks);
+		final EntityHomingExpOrb e = (EntityHomingExpOrb) en;
+		final double currentTick = e.updateStep + partialTicks;
 
-		// this is apparently minecraft's way
-		// to determine if a particle should be spawned or not
-		// reference: RenderGlobal.spawnParticle0()
-		int ps = Minecraft.getMinecraft().gameSettings.particleSetting * 4 + 1;
-		if (EntityHomingExpOrb.RNG.nextInt(ps) != 0) {
-			return;
+		final Iterator<Vector4d> it = e.queuedParticles.iterator();
+		while (it.hasNext()) {
+			final Vector4d v = it.next();
+			if (v.w > currentTick) {
+				break;
+			}
+			final Particle p = FACTORY.createParticle(0, e.world, v.x, v.y, v.z, 0, 0, 0);
+			Minecraft.getMinecraft().effectRenderer.addEffect(p);
+			it.remove();
 		}
-
-		double posX = e.lastTickPosX + (e.posX - e.lastTickPosX) * partialTicks;
-		double posY = e.lastTickPosY + (e.posY - e.lastTickPosY) * partialTicks;
-		double posZ = e.lastTickPosZ + (e.posZ - e.lastTickPosZ) * partialTicks;
-
-		Particle p = f.createParticle(0, e.world, posX, posY + 0.2D, posZ, 0, 0, 0);
-		float hue = (e.world.getWorldTime() % (1.0F / Constants.COLOR_STEP)) * Constants.COLOR_STEP;
-		Color c = Color.getHSBColor(hue, 1.0F, 1.0F);
-		p.setRBGColorF(c.getRed() / 255F, c.getGreen() / 255F, c.getBlue() / 255F);
-		p.setAlphaF(Constants.COLOR_ALPHA);
-		Minecraft.getMinecraft().effectRenderer.addEffect(p);
 	}
 
 	@Override
