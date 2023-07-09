@@ -24,7 +24,7 @@ public class ParticleRainbow extends ParticleSpell {
 	}
 
 	protected void setColor() {
-		final float hue = (world.getWorldTime() % (1.0F / Constants.COLOR_STEP)) * Constants.COLOR_STEP;
+		final float hue = ((float)Math.sin(world.getWorldTime() * Constants.COLOR_STEP) + 1F) / 2F;
 		final Color c = Color.getHSBColor(hue, 1.0F, 1.0F);
 		setRBGColorF(c.getRed() / 255F, c.getGreen() / 255F, c.getBlue() / 255F);
 		setAlphaF(Constants.COLOR_ALPHA);
@@ -37,19 +37,9 @@ public class ParticleRainbow extends ParticleSpell {
 		this.prevPosZ = this.posZ;
 
 		this.setParticleTextureIndex(baseTextureIndex - (int) (this.particleMaxAge / 8 * this.particleAge));
-		this.motionY += 0.004D;
-		this.move(this.motionX, this.motionY, this.motionZ);
 
-		if (this.posY == this.prevPosY) {
-			this.motionX *= 1.1D;
-			this.motionZ *= 1.1D;
-		}
-
-		this.motionX *= 0.9599999785423279D;
-		this.motionY *= 0.9599999785423279D;
-		this.motionZ *= 0.9599999785423279D;
-
-		if (this.particleAge++ >= this.particleMaxAge) {
+		this.particleAge++;
+		if (this.particleAge >= this.particleMaxAge) {
 			this.setExpired();
 		}
 	}

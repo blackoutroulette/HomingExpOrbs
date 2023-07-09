@@ -25,9 +25,10 @@ public class EntityHomingExpOrb extends EntityXPOrb {
 
 	// server-only values
 	protected static final HashMap<String, MutablePair<Long, Integer>> PLAYER_DELAY_MAP = new HashMap<String, MutablePair<Long, Integer>>();
-	public final LinkedList<Vector4d> queuedParticles = new LinkedList<>();
 	public static final Random RNG = new Random();
 
+
+	public Vector3d lastParticlePos = null;
 	protected EntityPlayer closestPlayer;
 	protected Vector3d target;
 	protected Vector3d velocity = new Vector3d();
@@ -148,36 +149,6 @@ public class EntityHomingExpOrb extends EntityXPOrb {
 		final double d1 = this.height / 2.0D;
 		this.setEntityBoundingBox(new AxisAlignedBB(x - d, y - d1, z - d, x + d, y + d1, z + d));
 
-		createParticles();
-	}
-
-	protected void createParticles() {
-		if (!world.isRemote || queuedParticles == null) {
-			return;
-		}
-
-		int emissionRate;
-		final int ps = Minecraft.getMinecraft().gameSettings.particleSetting;
-		if (ps == 0) {
-			emissionRate = Constants.MAX_PARTICLE_ALL;
-		} else if (ps == 1) {
-			emissionRate = Constants.MAX_PARTICLE_DEC;
-		} else {
-			return;
-		}
-
-		final Vector3d lastPos = new Vector3d(prevPosX, prevPosY, prevPosZ);
-		final Vector3d dif = new Vector3d(posX, posY, posZ);
-		dif.sub(lastPos);
-		for (int i = 0; i < emissionRate; ++i) {
-			final Vector3d v = new Vector3d(dif);
-			final double partialTick = i * (1.0D / emissionRate);
-			v.scale(partialTick);
-			v.add(lastPos);
-			final Vector4d vec = new Vector4d(v);
-			vec.w = this.updateStep + partialTick;
-			queuedParticles.add(vec);
-		}
 		++this.updateStep;
 	}
 
@@ -298,4 +269,5 @@ public class EntityHomingExpOrb extends EntityXPOrb {
 			}
 		}
 	}
+
 }

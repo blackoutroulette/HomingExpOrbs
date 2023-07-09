@@ -1,7 +1,7 @@
 package blackoutroulette.homingexporbs.render;
 
-import java.util.Iterator;
-import javax.vecmath.Vector4d;
+import javax.vecmath.Vector3d;
+
 import blackoutroulette.homingexporbs.Constants;
 import blackoutroulette.homingexporbs.entitys.EntityHomingExpOrb;
 import blackoutroulette.homingexporbs.particles.ParticleRainbow;
@@ -28,17 +28,39 @@ public class RenderHomingExpOrb extends RenderXPOrb {
 	public void doRender(EntityXPOrb en, double x, double y, double z, float entityYaw, float partialTicks) {
 		super.doRender(en, x, y - 0.2F, z, entityYaw, partialTicks);
 		final EntityHomingExpOrb e = (EntityHomingExpOrb) en;
-		final double currentTick = e.updateStep + partialTicks;
 
-		final Iterator<Vector4d> it = e.queuedParticles.iterator();
-		while (it.hasNext()) {
-			final Vector4d v = it.next();
-			if (v.w > currentTick) {
-				break;
-			}
+
+		final int ps = Minecraft.getMinecraft().gameSettings.particleSetting;
+		if(ps > 1){
+			return; // minimal particles case
+		}
+		final int particleDistance = Constants.PARTICLE_DISTANCE[ps];
+
+		Vector3d lastPos;
+		if(e.lastParticlePos == null) {
+			lastPos = new Vector3d(e.prevPosX, e.prevPosY, e.prevPosZ);
+			e.lastParticlePos = lastPos;
+		}else{
+			lastPos = e.lastParticlePos;
+		}
+
+		final Vector3d currentPos = new Vector3d(e.posX, e.posY, e.posZ);
+
+		Vector3d lastPosDiff = new Vector3d();
+		lastPosDiff.sub(currentPos, lastPos);
+		lastPosDiff.scale(partialTicks);
+		final double positionDist = lastPosDiff.length();
+		final int newParticles = (int)(positionDist / particleDistance);
+		lastPosDiff.scale(particleDistance / positionDist);
+
+		Vector3d v;
+		for (int i = 0; i < newParticles; ++i) {
+			v = new Vector3d(lastPosDiff);
+			v.scale(i+1);
+			v.add(lastPos);
+			e.lastParticlePos = v;
 			final Particle p = FACTORY.createParticle(0, e.world, v.x, v.y, v.z, 0, 0, 0);
 			Minecraft.getMinecraft().effectRenderer.addEffect(p);
-			it.remove();
 		}
 	}
 

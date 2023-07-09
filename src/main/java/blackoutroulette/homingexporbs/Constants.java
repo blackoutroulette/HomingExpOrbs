@@ -16,9 +16,8 @@ public final class Constants {
 	public static final int MAX_ANGLE = 135;
 
 	// Render values
-	public static final float COLOR_STEP = 0.02F;
+	public static final float COLOR_STEP = (2F * (float)Math.PI) / 80F; // full color cycle = 5 seconds
 	public static final float COLOR_ALPHA = 0.7F;
 	public static final int PARTICLE_LIFETIME = 8;
-	public static final int MAX_PARTICLE_ALL = 3;
-	public static final int MAX_PARTICLE_DEC = 2;
+	public static final int[] PARTICLE_DISTANCE = {1, 3};
 }
