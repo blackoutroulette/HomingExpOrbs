@@ -3,10 +3,10 @@ package blackoutroulette.homingexporbs.render;
 import javax.vecmath.Vector3d;
 
 import blackoutroulette.homingexporbs.Constants;
+import blackoutroulette.homingexporbs.HomingExpOrbs;
 import blackoutroulette.homingexporbs.entitys.EntityHomingExpOrb;
 import blackoutroulette.homingexporbs.particles.ParticleRainbow;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.Particle;
 import net.minecraft.client.renderer.culling.ICamera;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.client.renderer.entity.RenderXPOrb;
@@ -18,8 +18,6 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public class RenderHomingExpOrb extends RenderXPOrb {
 
-	public static final ParticleRainbow.Factory FACTORY = new ParticleRainbow.Factory();
-
 	protected RenderHomingExpOrb(RenderManager renderManager) {
 		super(renderManager);
 	}
@@ -29,6 +27,9 @@ public class RenderHomingExpOrb extends RenderXPOrb {
 		super.doRender(en, x, y - 0.2F, z, entityYaw, partialTicks);
 		final EntityHomingExpOrb e = (EntityHomingExpOrb) en;
 
+		if(HomingExpOrbs.config.disableParticles || !e.isActive()){
+			return;
+		}
 
 		final int ps = Minecraft.getMinecraft().gameSettings.particleSetting;
 		if(ps > 1){
@@ -59,7 +60,8 @@ public class RenderHomingExpOrb extends RenderXPOrb {
 			v.scale(i+1);
 			v.add(lastPos);
 			e.lastParticlePos = v;
-			final Particle p = FACTORY.createParticle(0, e.world, v.x, v.y, v.z, 0, 0, 0);
+			final ParticleRainbow p = new ParticleRainbow(e.world, v.x, v.y, v.z, 0, 0.1F, 0);
+			p.setColorFromTicks(e.world.getWorldTime() + partialTicks);
 			Minecraft.getMinecraft().effectRenderer.addEffect(p);
 		}
 	}
@@ -68,8 +70,7 @@ public class RenderHomingExpOrb extends RenderXPOrb {
 	public boolean shouldRender(EntityXPOrb e, ICamera camera, double camX, double camY, double camZ) {
 		AxisAlignedBB bb = e.getRenderBoundingBox();
 
-		return ((EntityHomingExpOrb) e).isActive() && camera.isBoundingBoxInFrustum(bb)
-				&& e.getDistance(camX, camY, camZ) <= Constants.HOMING_RANGE;
+		return camera.isBoundingBoxInFrustum(bb) && e.getDistance(camX, camY, camZ) <= HomingExpOrbs.config.homingRange;
 	}
 
 }

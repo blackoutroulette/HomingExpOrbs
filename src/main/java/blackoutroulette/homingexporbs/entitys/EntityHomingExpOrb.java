@@ -7,6 +7,8 @@ import javax.annotation.Nonnull;
 import javax.vecmath.Vector2d;
 import javax.vecmath.Vector3d;
 import javax.vecmath.Vector4d;
+
+import blackoutroulette.homingexporbs.HomingExpOrbs;
 import org.apache.commons.lang3.tuple.MutablePair;
 import blackoutroulette.homingexporbs.Constants;
 import net.minecraft.client.Minecraft;
@@ -24,7 +26,7 @@ import net.minecraft.world.World;
 public class EntityHomingExpOrb extends EntityXPOrb {
 
 	// server-only values
-	protected static final HashMap<String, MutablePair<Long, Integer>> PLAYER_DELAY_MAP = new HashMap<String, MutablePair<Long, Integer>>();
+	// Todo: use custom rng with min distance between values
 	public static final Random RNG = new Random();
 
 
@@ -33,7 +35,7 @@ public class EntityHomingExpOrb extends EntityXPOrb {
 	protected Vector3d target;
 	protected Vector3d velocity = new Vector3d();
 	protected boolean targetIsPlayer = false;
-	protected Delay delay = new Delay();
+	protected int delay = 0;
 	public int updateStep = 0;
 
 	// synchronized values
@@ -84,18 +86,18 @@ public class EntityHomingExpOrb extends EntityXPOrb {
 			return false;
 		}
 
-		delay.decrease();
-		if (closestPlayer == null && !delay.hasDelay()) {
+		--delay;
+		if (closestPlayer == null && delay <= 0) {
 			if (playerInRange()) {
 				createDummyTarget();
 			} else {
 				// check again in 20 ticks (1 second)
-				delay.add(20);
+				delay += 20;
 				return false;
 			}
 		}
 
-		setActive(!delay.hasDelay() && closestPlayer != null);
+		setActive(delay <= 0 && closestPlayer != null);
 		return isActive();
 	}
 
@@ -173,18 +175,18 @@ public class EntityHomingExpOrb extends EntityXPOrb {
 	public void readEntityFromNBT(@Nonnull NBTTagCompound cmp) {
 		super.readEntityFromNBT(cmp);
 		targetIsPlayer = true;
-		delay.add(10);
+		delay += 10;
 	}
 
 	protected boolean playerInRange() {
 		if (closestPlayer == null || closestPlayer.isSpectator()
-				|| closestPlayer.getDistance(this) > Constants.HOMING_RANGE) {
-			closestPlayer = world.getClosestPlayerToEntity(this, Constants.HOMING_RANGE);
+				|| closestPlayer.getDistance(this) > HomingExpOrbs.config.homingRange) {
+			closestPlayer = world.getClosestPlayerToEntity(this, HomingExpOrbs.config.homingRange);
 			if (closestPlayer == null || closestPlayer.isSpectator()) {
 				closestPlayer = null;
 				return false;
 			}
-			setSpawnDelay();
+			delay += EntityHomingExpOrb.RNG.nextInt(Constants.MAX_SPAWN_DELAY);
 		}
 		return true;
 	}
@@ -203,7 +205,7 @@ public class EntityHomingExpOrb extends EntityXPOrb {
 		final double rotY = Math.sin(angle);
 		v.scale(rotXZ);
 
-		final double scale = Math.max(0.5D, closestPlayer.getDistance(this) / (Constants.HOMING_RANGE / 2));
+		final double scale = Math.max(0.5D, closestPlayer.getDistance(this) / (HomingExpOrbs.config.homingRange / 2F));
 		target = new Vector3d(v.y, rotY, -v.x);
 		target.scale(scale);
 		target.add(new Vector3d(posX, posY, posZ));
@@ -225,49 +227,6 @@ public class EntityHomingExpOrb extends EntityXPOrb {
 
 	protected void setActive(boolean b) {
 		dataManager.set(ACTIVE, b);
-	}
-
-	/**
-	 * Lets orbs fly with a slight delay to each other based on player. For
-	 * esthetics only.
-	 */
-	protected void setSpawnDelay() {
-		final String username = closestPlayer.getName();
-		final long worldTime = world.getTotalWorldTime();
-
-		MutablePair<Long, Integer> pair = PLAYER_DELAY_MAP.get(username);
-		if (pair == null) {
-			pair = new MutablePair<>(worldTime, 0);
-			PLAYER_DELAY_MAP.put(username, pair);
-		}
-
-		final int i = Constants.MAX_SPAWN_DELAY / 2;
-		final int rand = EntityHomingExpOrb.RNG.nextInt(Constants.MAX_SPAWN_DELAY - i) + i;
-		pair.setRight(Math.max(0, pair.getRight() + rand - (int) (worldTime - pair.getLeft())));
-		pair.setLeft(worldTime);
-
-		delay.add(pair.getRight());
-	}
-
-	/**
-	 * Safety class to avoid logic errors.
-	 */
-	class Delay {
-		private int delay = 0;
-
-		public boolean hasDelay() {
-			return this.delay > 0;
-		}
-
-		public void add(int delay) {
-			this.delay += Math.abs(delay);
-		}
-
-		public void decrease() {
-			if (this.delay > 0) {
-				--this.delay;
-			}
-		}
 	}
 
 }
