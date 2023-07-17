@@ -6,13 +6,15 @@ public final class Constants {
 	public static final String VERSION = "1.1";
 
 	// Entity values
-	public static final double MAX_VELOCITY = 1.5D;
+	public static final double MAX_VELOCITY = 1.2D;
 	public static final double MASS = 8.0D;
 	public static final float SIZE = 0.25F;
 	public static final int MAX_SPAWN_DELAY = 20;
 	public static final int MAX_LIFETIME = 6000;
 	public static final int MIN_ANGLE = 45;
 	public static final int MAX_ANGLE = 135;
+	public static final int ORB_MAX_SPEED_DISTANCE = 40;
+	public static final int MAX_PARTICLE_DRAW_DISTANCE = 32;
 
 	// Render values
 	public static final float COLOR_CYCLE_TICKS = 50; // 20 ticks = 1sec

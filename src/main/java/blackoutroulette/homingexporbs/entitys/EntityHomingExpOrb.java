@@ -1,59 +1,40 @@
 package blackoutroulette.homingexporbs.entitys;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Random;
-import javax.annotation.Nonnull;
-import javax.vecmath.Vector2d;
-import javax.vecmath.Vector3d;
-import javax.vecmath.Vector4d;
-
-import blackoutroulette.homingexporbs.HomingExpOrbs;
-import org.apache.commons.lang3.tuple.MutablePair;
 import blackoutroulette.homingexporbs.Constants;
-import net.minecraft.client.Minecraft;
+import blackoutroulette.homingexporbs.HomingExpOrbs;
+import blackoutroulette.homingexporbs.math.Vec3d;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.block.material.Material;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.EntityXPOrb;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.network.datasync.DataParameter;
-import net.minecraft.network.datasync.DataSerializers;
-import net.minecraft.network.datasync.EntityDataManager;
+import net.minecraft.init.SoundEvents;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+import net.minecraftforge.fml.common.registry.IEntityAdditionalSpawnData;
 
-public class EntityHomingExpOrb extends EntityXPOrb {
+public class EntityHomingExpOrb extends EntityXPOrb implements IEntityAdditionalSpawnData {
 
-	// server-only values
-	// Todo: use custom rng with min distance between values
-	public static final Random RNG = new Random();
+	public Vec3d lastParticlePos = null;
+	protected EntityPlayer target = null;
+	protected int delay;
+	protected float launchAngle;
 
-
-	public Vector3d lastParticlePos = null;
-	protected EntityPlayer closestPlayer;
-	protected Vector3d target;
-	protected Vector3d velocity = new Vector3d();
-	protected boolean targetIsPlayer = false;
-	protected int delay = 0;
-	public int updateStep = 0;
-
-	// synchronized values
-	protected static final DataParameter<Boolean> ACTIVE = EntityDataManager.createKey(EntityHomingExpOrb.class,
-			DataSerializers.BOOLEAN);
-
-	public EntityHomingExpOrb(EntityXPOrb orb) {
-		super(orb.world, orb.posX, orb.posY, orb.posZ, orb.xpValue);
-		orb.setDead();
+	public EntityHomingExpOrb(World w, double x, double y, double z, int xpValue) {
+		super(w, x, y, z, xpValue);
+		this.delay = this.rand.nextInt(Constants.MAX_SPAWN_DELAY);
+		// launch angle between 45° and 135°
+		this.launchAngle = ((this.rand.nextFloat() * Vec3d.PI / 2F) + Vec3d.PI / 4F);
 	}
 
-	public EntityHomingExpOrb(World world) {
-		super(world);
+	public EntityHomingExpOrb(World w) {
+		super(w);
 	}
 
 	@Override
 	protected void entityInit() {
-		dataManager.register(ACTIVE, false);
 		this.setNoGravity(true);
 		this.noClip = true;
 
@@ -62,73 +43,80 @@ public class EntityHomingExpOrb extends EntityXPOrb {
 
 	@Override
 	public void onUpdate() {
-		if (world.isRemote && isActive()) {
-			++super.xpColor;
-			return;
-		}
-
-		if (!preconditions()) {
-			return;
-		}
-
-		calculateTrajectory();
-	}
-
-	/**
-	 * Checks if the orb should be updated
-	 * 
-	 * @return true if a player in range exists and no delay is set.
-	 */
-	protected boolean preconditions() {
 		++super.xpOrbAge;
+		++super.xpColor;
 		if (super.xpOrbAge >= Constants.MAX_LIFETIME) {
 			setDead();
-			return false;
+			return;
 		}
 
-		--delay;
-		if (closestPlayer == null && delay <= 0) {
-			if (playerInRange()) {
-				createDummyTarget();
-			} else {
-				// check again in 20 ticks (1 second)
-				delay += 20;
-				return false;
+		if (this.world.getBlockState(new BlockPos(this)).getMaterial() == Material.LAVA)
+		{
+			this.playSound(SoundEvents.ENTITY_GENERIC_BURN, 0.4F, 2.0F + this.rand.nextFloat() * 0.4F);
+			this.setDead();
+			return;
+		}
+
+		if(this.delay > 0){
+			--this.delay;
+			return;
+		}
+
+		if(this.target == null){
+			this.motionX = 0;
+			this.motionY = 0;
+			this.motionZ = 0;
+
+			this.target = world.getClosestPlayerToEntity(this, HomingExpOrbs.config.homingRange);
+
+			if(this.target == null || this.target.isSpectator()){
+				this.target = null;
+			}else {
+				Vec3d velocity = getTargetPos();
+
+				velocity.sub(getPos());
+				final float distance = (float) velocity.length();
+				final float speedMul = distance > Constants.ORB_MAX_SPEED_DISTANCE? 1 : distance / Constants.ORB_MAX_SPEED_DISTANCE;
+
+				final float angleToXAxis = (float) velocity.angleXZPlane();
+				// point the vector in the direction of the negative z-axis
+				velocity = new Vec3d(0, 0, -Constants.MAX_VELOCITY * speedMul);
+				// rotate between 45° and 135°
+				velocity.rotX(this.launchAngle);
+				// rotate the x-axis to the target
+				velocity.rotY(angleToXAxis);
+
+				setVelocity(velocity);
 			}
+		}else{
+			calculateVelocityVector();
 		}
 
-		setActive(delay <= 0 && closestPlayer != null);
-		return isActive();
+		this.move();
 	}
 
-	protected void calculateTrajectory() {
-		final Vector3d pos = new Vector3d(posX, posY, posZ);
-		final Vector3d v = getTarget();
+	protected void calculateVelocityVector() {
+		final Vec3d pos = getPos();
+		Vec3d v = getTargetPos();
 		v.sub(pos);
 
-		if (!targetIsPlayer && v.length() <= 0.5D) {
-			targetIsPlayer = true;
-		}
-
 		v.normalize();
-		v.scale(Constants.MAX_VELOCITY);
+		v.mul(Constants.MAX_VELOCITY);
 
 		// steering
+		Vec3d velocity = getVelocity();
 		v.sub(velocity);
-		v.scale(1.0F / Constants.MASS);
+		v.div(Constants.MASS);
 		velocity.add(v);
 		if(velocity.length() > Constants.MAX_VELOCITY) {
 			velocity.normalize();
-			velocity.scale(Constants.MAX_VELOCITY);
+			velocity.mul(Constants.MAX_VELOCITY);
 		}
-		setPosition(posX + velocity.x, posY + velocity.y, posZ + velocity.z);
+		this.setVelocity(velocity);
 	}
-	
-	protected Vector3d getTarget() {
-		if(targetIsPlayer) {
-			return new Vector3d(closestPlayer.posX,	closestPlayer.posY + this.closestPlayer.getEyeHeight() / 2.0D, closestPlayer.posZ);
-		}
-		return new Vector3d(target);
+
+	public void move(){
+		this.setPosition(this.posX + motionX, this.posY + motionY, this.posZ + motionZ);
 	}
 
 	@Override
@@ -139,29 +127,26 @@ public class EntityHomingExpOrb extends EntityXPOrb {
 		this.posX = x;
 		this.posY = y;
 		this.posZ = z;
-		
+
 		updatePitchAndYaw();
-		
+
 		// Forge - Process chunk registration after moving.
 		if (this.isAddedToWorld() && !this.world.isRemote)
-			this.world.updateEntityWithOptionalForce(this, false); 
-		
-		// bounding box
-		final double d = this.width / 2.0D;
-		final double d1 = this.height / 2.0D;
-		this.setEntityBoundingBox(new AxisAlignedBB(x - d, y - d1, z - d, x + d, y + d1, z + d));
+			this.world.updateEntityWithOptionalForce(this, false);
 
-		++this.updateStep;
+		// bounding box
+		final float w = this.width / 2.0F;
+		final float h = this.height / 2.0F;
+		this.setEntityBoundingBox(new AxisAlignedBB(x - w, y - h, z - w, x + w, y + h, z + w));
 	}
 
 	protected void updatePitchAndYaw() {
-		final Vector3d direction = new Vector3d(posX - prevPosX, posY - prevPosY, posZ - prevPosZ);
-		direction.normalize();
-
 		this.prevRotationPitch = this.rotationPitch;
 		this.prevRotationYaw = this.rotationYaw;
-		this.rotationPitch = (float) Math.toDegrees(-Math.asin(direction.y));
-		this.rotationYaw = -((float) MathHelper.atan2(direction.x, direction.z)) * (180F / (float) Math.PI);
+
+		final Vec3d vel = getVelocity();
+		this.rotationPitch = (float) Math.toDegrees(Math.asin(-vel.y));
+		this.rotationYaw = (float) Math.toDegrees(-Math.atan2(vel.x, vel.z));
 	}
 
 	@Override
@@ -169,46 +154,6 @@ public class EntityHomingExpOrb extends EntityXPOrb {
 		entityIn.xpCooldown = 0;
 		delayBeforeCanPickup = 0;
 		super.onCollideWithPlayer(entityIn);
-	}
-
-	@Override
-	public void readEntityFromNBT(@Nonnull NBTTagCompound cmp) {
-		super.readEntityFromNBT(cmp);
-		targetIsPlayer = true;
-		delay += 10;
-	}
-
-	protected boolean playerInRange() {
-		if (closestPlayer == null || closestPlayer.isSpectator()
-				|| closestPlayer.getDistance(this) > HomingExpOrbs.config.homingRange) {
-			closestPlayer = world.getClosestPlayerToEntity(this, HomingExpOrbs.config.homingRange);
-			if (closestPlayer == null || closestPlayer.isSpectator()) {
-				closestPlayer = null;
-				return false;
-			}
-			delay += EntityHomingExpOrb.RNG.nextInt(Constants.MAX_SPAWN_DELAY);
-		}
-		return true;
-	}
-
-	/**
-	 * Creates a dummy target to manipulate the orb trajectory. For esthetics only.
-	 */
-	protected void createDummyTarget() {
-		final Vector2d v = new Vector2d(posX, posZ);
-		v.sub(new Vector2d(closestPlayer.posX, closestPlayer.posZ));
-		v.normalize();
-
-		final double angle = Math
-				.toRadians(RNG.nextInt(Constants.MAX_ANGLE - Constants.MIN_ANGLE) + Constants.MIN_ANGLE);
-		final double rotXZ = Math.cos(angle);
-		final double rotY = Math.sin(angle);
-		v.scale(rotXZ);
-
-		final double scale = Math.max(0.5D, closestPlayer.getDistance(this) / (HomingExpOrbs.config.homingRange / 2F));
-		target = new Vector3d(v.y, rotY, -v.x);
-		target.scale(scale);
-		target.add(new Vector3d(posX, posY, posZ));
 	}
 
 	@Override
@@ -221,12 +166,41 @@ public class EntityHomingExpOrb extends EntityXPOrb {
 		return false;
 	}
 
-	public boolean isActive() {
-		return dataManager.get(ACTIVE);
+	public Vec3d getPos(){
+		return getEntityPos(this);
 	}
 
-	protected void setActive(boolean b) {
-		dataManager.set(ACTIVE, b);
+	public Entity getTarget(){
+		return this.target;
 	}
 
+	protected Vec3d getTargetPos(){
+		return getEntityPos(target);
+	}
+
+	public static Vec3d getEntityPos(Entity e) {
+		return new Vec3d(e.posX, e.posY, e.posZ);
+	}
+
+	public Vec3d getVelocity() {
+		return new Vec3d(motionX, motionY, motionZ);
+	}
+
+	public void setVelocity(Vec3d v){
+		this.motionX = v.x;
+		this.motionY = v.y;
+		this.motionZ = v.z;
+	}
+
+	@Override
+	public void writeSpawnData(ByteBuf buffer) {
+		buffer.writeInt(this.delay);
+		buffer.writeFloat(this.launchAngle);
+	}
+
+	@Override
+	public void readSpawnData(ByteBuf additionalData) {
+		this.delay = additionalData.readInt();
+		this.launchAngle = additionalData.readFloat();
+	}
 }
