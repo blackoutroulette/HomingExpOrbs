@@ -1,11 +1,13 @@
 package blackoutroulette.homingexporbs.entitys;
 
+import blackoutroulette.homingexporbs.ConfigHandler;
 import blackoutroulette.homingexporbs.Constants;
 import blackoutroulette.homingexporbs.HomingExpOrbs;
 import blackoutroulette.homingexporbs.math.Vec3d;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.MoverType;
 import net.minecraft.entity.item.EntityXPOrb;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.SoundEvents;
@@ -18,6 +20,8 @@ import net.minecraftforge.fml.common.registry.IEntityAdditionalSpawnData;
 public class EntityHomingExpOrb extends EntityXPOrb implements IEntityAdditionalSpawnData {
 
 	public Vec3d lastParticlePos = null;
+
+	// Todo: sync between server and client
 	protected EntityPlayer target = null;
 	protected int delay;
 	protected float launchAngle;
@@ -37,7 +41,6 @@ public class EntityHomingExpOrb extends EntityXPOrb implements IEntityAdditional
 	protected void entityInit() {
 		this.setNoGravity(true);
 		this.noClip = true;
-
 		setSize(Constants.SIZE, Constants.SIZE);
 	}
 
@@ -62,21 +65,21 @@ public class EntityHomingExpOrb extends EntityXPOrb implements IEntityAdditional
 			return;
 		}
 
-		if(this.target == null){
+		if(this.target == null) {
 			this.motionX = 0;
 			this.motionY = 0;
 			this.motionZ = 0;
 
-			this.target = world.getClosestPlayerToEntity(this, HomingExpOrbs.config.homingRange);
+			this.target = world.getClosestPlayerToEntity(this, ConfigHandler.getInstance().getHomingMaxRange());
 
-			if(this.target == null || this.target.isSpectator()){
+			if (this.target == null || this.target.isSpectator()) {
 				this.target = null;
-			}else {
+			} else {
 				Vec3d velocity = getTargetPos();
 
 				velocity.sub(getPos());
 				final float distance = (float) velocity.length();
-				final float speedMul = distance > Constants.ORB_MAX_SPEED_DISTANCE? 1 : distance / Constants.ORB_MAX_SPEED_DISTANCE;
+				final float speedMul = distance > Constants.ORB_MAX_SPEED_DISTANCE ? 1 : distance / Constants.ORB_MAX_SPEED_DISTANCE;
 
 				final float angleToXAxis = (float) velocity.angleXZPlane();
 				// point the vector in the direction of the negative z-axis
@@ -91,6 +94,7 @@ public class EntityHomingExpOrb extends EntityXPOrb implements IEntityAdditional
 		}else{
 			calculateVelocityVector();
 		}
+
 
 		this.move();
 	}

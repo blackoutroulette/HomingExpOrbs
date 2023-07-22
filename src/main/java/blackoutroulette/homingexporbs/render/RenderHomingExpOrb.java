@@ -1,5 +1,6 @@
 package blackoutroulette.homingexporbs.render;
 
+import blackoutroulette.homingexporbs.ConfigHandler;
 import blackoutroulette.homingexporbs.Constants;
 import blackoutroulette.homingexporbs.HomingExpOrbs;
 import blackoutroulette.homingexporbs.entitys.EntityHomingExpOrb;
@@ -28,7 +29,7 @@ public class RenderHomingExpOrb extends RenderXPOrb {
         super.doRender(en, x, y - 0.2F, z, entityYaw, partialTicks);
         final EntityHomingExpOrb e = (EntityHomingExpOrb) en;
 
-        if (HomingExpOrbs.config.disableParticles){
+        if (ConfigHandler.getInstance().isParticlesDisabled()){
             return;
         }
 
@@ -77,9 +78,8 @@ public class RenderHomingExpOrb extends RenderXPOrb {
 
     @Override
     public boolean shouldRender(EntityXPOrb e, ICamera camera, double camX, double camY, double camZ) {
-        AxisAlignedBB bb = e.getRenderBoundingBox();
-
-        return camera.isBoundingBoxInFrustum(bb) && e.getDistance(camX, camY, camZ) <= HomingExpOrbs.config.homingRange;
+        final AxisAlignedBB bb = e.getRenderBoundingBox();
+        return camera.isBoundingBoxInFrustum(bb) && e.getDistance(camX, camY, camZ) <= ConfigHandler.getInstance().getHomingMaxRange();
     }
 
 }
