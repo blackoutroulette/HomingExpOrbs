@@ -29,29 +29,28 @@ public class RenderHomingExpOrb extends RenderXPOrb {
         super.doRender(en, x, y - 0.2F, z, entityYaw, partialTicks);
         final EntityHomingExpOrb e = (EntityHomingExpOrb) en;
 
-        if (ConfigHandler.getInstance().isParticlesDisabled()){
+        final int ps = Minecraft.getMinecraft().gameSettings.particleSetting;
+        if (ConfigHandler.getInstance().isParticlesDisabled() || ps > 1){
+            e.lastParticlePos = null;
             return;
         }
 
         final Entity target = e.getTarget();
         if(target == null){
+            e.lastParticlePos = null;
             return;
         }
 
-        final Vec3d targetPos = EntityHomingExpOrb.getEntityPos(e.getTarget());
-        if(targetPos.distanceTo(e.getPos()) > Constants.MAX_PARTICLE_DRAW_DISTANCE){
+        if(e.getDistance(e.getTarget()) > Constants.MAX_PARTICLE_DRAW_DISTANCE){
+            e.lastParticlePos = null;
             return;
         }
 
-        final int ps = Minecraft.getMinecraft().gameSettings.particleSetting;
-        if (ps > 1) {
-            return; // minimal particles case
-        }
-        final int particleDistance = Constants.PARTICLE_DISTANCE[ps];
+        final float particleDistance = Constants.PARTICLE_DISTANCE[ps];
 
         Vec3d lastPos;
         if (e.lastParticlePos == null) {
-            lastPos = new Vec3d(e.prevPosX, e.prevPosY, e.prevPosZ);
+            lastPos = e.getPos();
             e.lastParticlePos = lastPos;
         } else {
             lastPos = e.lastParticlePos;
